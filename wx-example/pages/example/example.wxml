@@ -13,6 +13,10 @@
         <label class="label">
           <checkbox bindtap="toggleChecksum" checked="{{enableChecksum}}"> 启用CRC16校验</checkbox>
         </label>
+        <label class="label">
+          <view style="color: #999;">设备名称前缀</view> 
+          <input type="text" value="{{prefix}}" bindchange="changePrefix" placeholder="请输入BLE设备名前缀"/>
+        </label>
       </view>
       <button class="btn" bindtap="initBluFi" disabled="{{blufiInitialized}}">初始化BluFi</button>
     </view>

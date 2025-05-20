@@ -3,6 +3,7 @@ const {BluFi, WIFI_MODE } = require("./blufi.js");
 Page({
   data: {
     devices: [],
+    prefix: 'BLUFI_',
     connected: false,
     wifiList: [],
     selectedSsid: "",
@@ -45,12 +46,16 @@ Page({
       enableChecksum: !this.data.enableChecksum
     });
   },
-
+  changePrefix(e){    
+    this.setData({
+      prefix: e.detail.value
+    });
+  },
   // 初始化BluFi
   async initBluFi() {
     // 创建BluFi实例，传入校验选项
     this.blufi = new BluFi({ 
-      devicePrefix: 'h8w_',
+      devicePrefix: this.data.prefix,
       enableChecksum: this.data.enableChecksum
     });
     console.log('enableChecksum', this.data.enableChecksum);

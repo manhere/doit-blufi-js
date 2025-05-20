@@ -87,7 +87,7 @@ class BluFi {
   /**
    * 创建BluFi实例
    * @param {Object} options - 配置选项
-   * @param {String} options.devicePrefix - 设备名称前缀，默认为'h8w_'
+   * @param {String} options.devicePrefix - 设备名称前缀, 默认BLUFI_
    */
   constructor(options = {}) {
     this.deviceId = null;
@@ -101,7 +101,7 @@ class BluFi {
     this.callbacks = {};
     
     // 设备前缀
-    this.devicePrefix = options.devicePrefix || 'h8w_';
+    this.devicePrefix = options.devicePrefix || 'BLUFI_';
     
     // 安全相关
     this.securityMode = 0; // 默认无加密无校验
