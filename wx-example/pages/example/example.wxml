@@ -1,11 +1,11 @@
 <!--pages/index/try_blufi1.wxml-->
-<view class="container">
+<view>
   <view class="header">
     <text class="title">ESP32 BluFi 配网</text>
   </view>
 
   <!-- 蓝牙设备扫描和连接部分 -->
-  <view class="section">
+  <view>
     <!-- 在设备连接部分添加校验选项 -->
     <view class="section">
       <view class="section-title">BluFi设置</view>

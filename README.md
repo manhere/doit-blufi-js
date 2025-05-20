@@ -23,6 +23,8 @@ DOIT BluFi.js SDK 是一个基于 JavaScript 的 SDK，用于在微信小程序�
 
 ### 微信小程序
 参考`wx-example`项目，在`微信开发者工具`中导入项目并运行。 
+微信搜索"Frossky"或扫码可以演示配网功能。
+![](docs/xcx_code.jpg)
 
 ### 设备端
 设备端可使用乐鑫官方支持BluFi的模组和和支持Blufi的AT固件。包括：
