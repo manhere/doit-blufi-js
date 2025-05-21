@@ -241,13 +241,14 @@ class BluFi {
       
       this.writeCharId = writeChar.uuid;
       this.notifyCharId = notifyChar.uuid;
+      this.sequence = -1; // 初始化序列号
       
       // 启用通知
       await this._enableNotify();
       
       // 初始化安全连接
       await this._initSecurity();
-      
+
       this.connected = true;
       return true;
     } catch (error) {
@@ -973,7 +974,7 @@ async _initSecurity() {
     if (needChecksum === null) {
       needChecksum = this.enableChecksum;
     }
-    console.log('needChecksum', needChecksum);
+    
     // 帧控制字段
     let frameControl = 0;
     
