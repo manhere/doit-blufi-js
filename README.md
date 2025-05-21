@@ -35,5 +35,214 @@ DOIT BluFi.js SDK 是一个基于 JavaScript 的 SDK，用于在微信小程序�
 
 注意，部分模组有多个AT固件，请选择适合的固件。
 
+## API 参考
+
+### 初始化与配置
+
+#### 创建 BluFi 实例
+
+```javascript
+const blufi = new BluFi(options);
+```
+
+参数说明：
+- `options` (Object): 配置选项
+  - `devicePrefix` (String): 设备名称前缀，默认为 'BLUFI_'
+  - `enableChecksum` (Boolean): 是否启用 CRC16 校验，默认为 false
+
+示例：
+```javascript
+const {BluFi, WIFI_MODE} = require('blufi.js');
+const blufi = new BluFi({ 
+  devicePrefix: 'BLUFI_',
+  enableChecksum: false
+});
+```
+
+#### 初始化蓝牙
+
+```javascript
+async init()
+```
+
+初始化蓝牙模块，必须在使用其他功能前调用。
+
+返回值：
+- `Promise<Boolean>`: 初始化成功返回 true，失败返回 false
+
+示例：
+```javascript
+const initialized = await blufi.init();
+if (initialized) {
+  console.log('蓝牙初始化成功');
+} else {
+  console.log('蓝牙初始化失败');
+}
+```
+
+### 设备扫描与连接
+
+#### 扫描 BluFi 设备
+
+```javascript
+async scanDevices(timeout, onDeviceFound)
+```
+
+扫描周围的 BluFi 设备。
+
+参数说明：
+- `timeout` (Number): 扫描超时时间(毫秒)，默认为 10000ms
+- `onDeviceFound` (Function): 发现设备时的回调函数，可选。接收一个设备对象参数
+
+返回值：
+- `Promise<Array>`: 扫描到的设备列表
+
+示例：
+```javascript
+// 方式一：等待扫描完成后获取设备列表
+const devices = await blufi.scanDevices(3000);
+console.log('扫描到的设备:', devices);
+
+// 方式二：实时获取发现的设备
+blufi.scanDevices(3000, (device) => {
+  console.log('实时发现设备:', device);
+  // 可以在这里更新UI，显示新发现的设备
+});
+```
+
+#### 连接到 BluFi 设备
+
+```javascript
+async connect(deviceId)
+```
+
+连接到指定的 BluFi 设备。
+
+参数说明：
+- `deviceId` (String): 设备ID，从扫描结果中获取`device.deviceId`
+
+返回值：
+- `Promise<Boolean>`: 连接成功返回 true
+
+示例：
+```javascript
+try {
+  await blufi.connect(deviceId);
+  console.log('设备连接成功');
+} catch (error) {
+  console.error('连接设备失败:', error);
+}
+```
+
+#### 断开连接
+
+```javascript
+async disconnect()
+```
+
+断开与当前连接的设备的连接。
+
+示例：
+```javascript
+await blufi.disconnect();
+console.log('已断开连接');
+```
+
+### WiFi 配置
+
+#### 扫描 WiFi
+
+```javascript
+async scanWifi()
+```
+
+让设备扫描周围的 WiFi 网络。获取到的WiFi SSID都是设备支持的频段，从而避免连接不支持频段(如5.8G)的WiFi。
+
+返回值：
+- `Promise<Array>`: WiFi 列表，每个项目包含 ssid 和 rssi 属性
+
+示例：
+```javascript
+try {
+  const wifiList = await blufi.scanWifi();
+  console.log('WiFi 列表:', wifiList);
+} catch (error) {
+  console.error('扫描 WiFi 失败:', error);
+}
+```
+
+#### 配置 WiFi 连接
+
+```javascript
+async configureWifi(config)
+```
+
+配置设备连接到指定的 WiFi 网络。
+
+参数说明：
+- `config` (Object): WiFi 配置
+  - `ssid` (String): WiFi 的 SSID，可使用`scanWifi()`获取到的`wifiList[i].ssid`
+  - `password` (String): WiFi 的密码
+  - `mode` (Number): WiFi 模式，默认为 WIFI_MODE.STATION
+
+返回值：
+- `Promise<Boolean>`: 配置成功返回 true
+
+示例：
+```javascript
+try {
+  await blufi.configureWifi({
+    ssid: 'MyWiFi',
+    password: 'password123',
+    mode: WIFI_MODE.STATION,
+  });
+  console.log('WiFi 配置成功');
+} catch (error) {
+  console.error('WiFi 配置失败:', error);
+}
+```
+
+### 自定义数据传输
+
+#### 发送自定义数据
+
+```javascript
+async sendCustomData(data)
+```
+
+向设备发送自定义数据。
+
+参数说明：
+- `data` (Uint8Array): 要发送的数据
+
+返回值：
+- `Promise<Boolean>`: 发送成功返回 true
+
+示例：
+```javascript
+try {
+  // 将字符串转换为 Uint8Array
+  const dataArray = blufi._stringToUint8Array('Hello BluFi');
+  
+  await blufi.sendCustomData(dataArray);
+  console.log('数据发送成功');
+} catch (error) {
+  console.error('数据发送失败:', error);
+}
+```
+
+### 常量
+
+#### WiFi 模式
+
+```javascript
+const WIFI_MODE = {
+  NULL: 0x00,      // 无模式
+  STATION: 0x01,   // 站点模式（连接到现有WiFi）
+  SOFTAP: 0x02,    // 软AP模式（创建WiFi热点）
+  STATIONAP: 0x03  // 同时为站点和软AP模式
+};
+```
+
 ## 交流联系
 ![](docs/tech-support.png)
