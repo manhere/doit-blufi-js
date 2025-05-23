@@ -14,6 +14,9 @@ DOIT BluFi.js SDK 是一个基于 JavaScript 的 SDK，用于在微信小程序�
 * 支持自定义BLE名称前缀
 * 支持读取设备端WIFI列表
 * 支持向设备端发送自定义消息
+* 支持读取设备端发来的自定义消息，
+* 支持`BluFi.uint8ArrayToString`函数将收到的自定义消息解析为字符串
+* 默认使用`wx.logManager`作为日志输出，便于用户反馈问题调试，可通过`enableLogManager`选项禁用
 
 ## 待实现功能
 * 支持加密数据传输
@@ -49,13 +52,20 @@ const blufi = new BluFi(options);
 - `options` (Object): 配置选项
   - `devicePrefix` (String): 设备名称前缀，默认为 'BLUFI_'
   - `enableChecksum` (Boolean): 是否启用 CRC16 校验，默认为 false
+  - `enableLogManager` (Boolean): 是否使用wx.logManager作为日志输出，默认为 false
+  - `onCustomData` (Function): 收到自定义数据时的回调函数，默认为 null
 
 示例：
 ```javascript
 const {BluFi, WIFI_MODE} = require('blufi.js');
 const blufi = new BluFi({ 
   devicePrefix: 'BLUFI_',
-  enableChecksum: false
+  enableChecksum: false,
+  enableLogManager: false,
+  onCustomData: (data) => {
+    let dataStr = BluFi.uint8ArrayToString(data); // 微信没有提供字符串转换函数，可使用此函数转换
+    console.log('收到自定义数据:', data);
+  }
 });
 ```
 
@@ -246,3 +256,5 @@ const WIFI_MODE = {
 
 ## 交流联系
 ![](docs/tech-support.png)
+
+        
