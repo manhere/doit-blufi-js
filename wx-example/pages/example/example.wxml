@@ -15,7 +15,7 @@
         </label>
         <label class="label">
           <view style="color: #999;">设备名称前缀</view> 
-          <input type="text" value="{{prefix}}" bindchange="changePrefix" placeholder="请输入BLE设备名前缀"/>
+          <input type="text" value="{{prefix}}" bindinput="changePrefix" placeholder="请输入BLE设备名前缀"/>
         </label>
       </view>
       <button class="btn" bindtap="initBluFi" disabled="{{blufiInitialized}}">初始化BluFi</button>
@@ -91,8 +91,17 @@
       </view>
       <button class="btn submit-btn" form-type="submit">发送数据</button>
     </form>
-  </view>
+    <view style="margin: 50px;"></view>
+    
+    <!-- 自定义数据接收部分 -->
+    <view class="section-title" style="margin-top: 20px;">接收自定义数据</view>
+    <view wx:for="{{receivedCustomData}}" wx:key="index">
+      <view style="font-size: small; color:#999;">{{item.time}}</view>
+      <view>{{item.data}}</view>
+    </view>
+    <view style="margin: 50px;"></view>
 
+  </view>
   <!-- 连接状态提示 -->
   <view class="status-bar">
     <text class="status-text">{{connected ? '已连接' : '未连接'}}</text>

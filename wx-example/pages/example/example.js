@@ -11,6 +11,7 @@ Page({
     bluetoothReady: false, // 蓝牙初始化状态
     enableChecksum: false, // 是否启用CRC16校验
     blufiInitialized: false, // BluFi是否已初始化
+    receivedCustomData: [],
   },
 
   // 添加以下方法
@@ -56,9 +57,20 @@ Page({
     // 创建BluFi实例，传入校验选项
     this.blufi = new BluFi({ 
       devicePrefix: this.data.prefix,
-      enableChecksum: this.data.enableChecksum
+      enableChecksum: this.data.enableChecksum,
+      onCustomData: (data)=>{
+        console.log('收到自定义数据:', data);
+        // 在这里处理自定义数据
+        // 例如：将Uint8Array转换为字符串
+        const dataStr = BluFi.uint8ArrayToString(data);
+        this.data.receivedCustomData.push({
+          time: (new Date()).toLocaleString(),
+          data: dataStr,
+        })
+        this.setData({receivedCustomData: this.data.receivedCustomData});
+      },
     });
-    console.log('enableChecksum', this.data.enableChecksum);
+    console.log('init BluFi', this.data.prefix, this.data.enableChecksum);
     // 初始化蓝牙
     const initialized = await this.blufi.init();
     if (!initialized) {

@@ -1,6 +1,8 @@
 /**
  * BluFi 微信小程序实现
  * 基于ESP32-C2的BluFi协议
+ * Copyright (c) 2025, Jacques Yang. 
+ * MIT License.
  */
 
 // 常量定义
@@ -88,6 +90,9 @@ class BluFi {
    * 创建BluFi实例
    * @param {Object} options - 配置选项
    * @param {String} options.devicePrefix - 设备名称前缀, 默认BLUFI_
+   * @param {Boolean} options.enableChecksum - 是否启用CRC16校验, 默认false
+   * @param {Boolean} options.enableLogManager - 是否使用wx.logManager作为日志输出, 默认false
+   * @param {Function} options.onCustomData - 收到自定义数据时的回调函数, 默认为null
    */
   constructor(options = {}) {
     this.deviceId = null;
@@ -102,6 +107,13 @@ class BluFi {
     
     // 设备前缀
     this.devicePrefix = options.devicePrefix || 'BLUFI_';
+    
+    // 日志管理器设置
+    this.enableLogManager = options.enableLogManager !== undefined ? options.enableLogManager : false;
+    this.logger = this.enableLogManager ? wx.getLogManager() : console;
+    
+    // 自定义数据回调
+    this.callbacks.onCustomData = options.onCustomData || null;
     
     // 安全相关
     this.securityMode = 0; // 默认无加密无校验
@@ -124,10 +136,10 @@ class BluFi {
     try {
       // 初始化蓝牙模块
       await this._promisify(wx.openBluetoothAdapter);
-      console.log('蓝牙初始化成功');
+      this.logger.log('蓝牙初始化成功');
       return true;
     } catch (error) {
-      console.error('蓝牙初始化失败:', error);
+      this.logger.warn('蓝牙初始化失败:', error);
       return false;
     }
   }
@@ -149,7 +161,7 @@ class BluFi {
         allowDuplicatesKey: true,
       });
       
-      console.log('开始扫描设备');
+      this.logger.log('开始扫描设备');
       
       // 如果提供了回调函数，设置蓝牙设备发现事件监听器
       if (onDeviceFound) {
@@ -178,7 +190,7 @@ class BluFi {
       
       // 获取在蓝牙模块生效期间所有已发现的蓝牙设备
       const res = await this._promisify(wx.getBluetoothDevices);
-      console.log('scanDevices', res);
+      this.logger.log('scanDevices', res);
       
       // 停止搜寻
       await this._promisify(wx.stopBluetoothDevicesDiscovery);
@@ -188,7 +200,7 @@ class BluFi {
         device.name && device.name.includes(this.devicePrefix)
       );
       
-      console.log('扫描到的设备:', devices);
+      this.logger.log('扫描到的设备:', devices);
       return devices;
     } catch (error) {
       // 确保在出错时也停止监听
@@ -196,7 +208,7 @@ class BluFi {
         wx.offBluetoothDeviceFound();
       }
       
-      console.error('扫描设备失败:', error);
+      this.logger.warn('扫描设备失败:', error);
       throw error;
     }
   }
@@ -211,11 +223,11 @@ class BluFi {
       
       // 连接设备
       await this._promisify(wx.createBLEConnection, { deviceId });
-      console.log('设备连接成功');
+      this.logger.log('设备连接成功');
       
       // 获取服务
       const servicesRes = await this._promisify(wx.getBLEDeviceServices, { deviceId });
-      console.log('获取服务列表:', servicesRes.services);
+      this.logger.log('获取服务列表:', servicesRes.services);
       
       // 查找BluFi服务
       const service = servicesRes.services.find(s => s.uuid.toUpperCase() === BLUFI_SERVICE_UUID);
@@ -229,7 +241,7 @@ class BluFi {
         deviceId,
         serviceId: this.serviceId
       });
-      console.log('获取特征值列表:', charsRes.characteristics);
+      this.logger.log('获取特征值列表:', charsRes.characteristics);
       
       // 查找写特征值和通知特征值
       const writeChar = charsRes.characteristics.find(c => c.uuid.toUpperCase() === BLUFI_CHAR_WRITE_UUID);
@@ -252,7 +264,7 @@ class BluFi {
       this.connected = true;
       return true;
     } catch (error) {
-      console.error('连接设备失败:', error);
+      this.logger.warn('连接设备失败:', error);
       this.disconnect();
       throw error;
     }
@@ -263,7 +275,7 @@ class BluFi {
  */
 async _initSecurity() {
   try {
-    console.log('初始化安全连接');
+    this.logger.log('初始化安全连接');
     
     // 根据是否启用校验设置安全模式
     // 高4位用于控制帧的安全模式设置，低4位用于数据帧的安全模式设置
@@ -279,7 +291,7 @@ async _initSecurity() {
     
     return true;
   } catch (error) {
-    console.error('初始化安全连接失败:', error);
+    this.logger.warn('初始化安全连接失败:', error);
     throw error;
   }
 }
@@ -302,9 +314,9 @@ async _initSecurity() {
         }
         
         await this._promisify(wx.closeBLEConnection, { deviceId: this.deviceId });
-        console.log('设备已断开连接');
+        this.logger.log('设备已断开连接');
       } catch (error) {
-        console.error('断开连接失败:', error);
+        this.logger.warn('断开连接失败:', error);
       } finally {
         this.deviceId = null;
         this.serviceId = null;
@@ -349,7 +361,7 @@ async _initSecurity() {
       
       return true;
     } catch (error) {
-      console.error('配置WiFi失败:', error);
+      this.logger.warn('配置WiFi失败:', error);
       throw error;
     }
   }
@@ -386,7 +398,7 @@ async _initSecurity() {
         }, 10000);
       });
     } catch (error) {
-      console.error('获取WiFi状态失败:', error);
+      this.logger.warn('获取WiFi状态失败:', error);
       throw error;
     }
   }
@@ -423,7 +435,7 @@ async _initSecurity() {
         }, 3000); // 3秒超时
       });
     } catch (error) {
-      console.error('扫描WiFi失败:', error);
+      this.logger.warn('扫描WiFi失败:', error);
       throw error;
     }
   }
@@ -441,7 +453,7 @@ async _initSecurity() {
       await this._sendDataFrame(DATA_SUBTYPE.CUSTOM_DATA, data);
       return true;
     } catch (error) {
-      console.error('发送自定义数据失败:', error);
+      this.logger.warn('发送自定义数据失败:', error);
       throw error;
     }
   }
@@ -461,14 +473,14 @@ async _initSecurity() {
       });
       
       this.isNotifying = true;
-      console.log('通知已启用');
+      this.logger.log('通知已启用');
       
       // 监听特征值变化
       wx.onBLECharacteristicValueChange(this._onCharacteristicValueChange.bind(this));
       
       return true;
     } catch (error) {
-      console.error('启用通知失败:', error);
+      this.logger.warn('启用通知失败:', error);
       throw error;
     }
   }
@@ -480,7 +492,7 @@ async _initSecurity() {
   _onCharacteristicValueChange(res) {
     if (res.characteristicId.toUpperCase() === this.notifyCharId.toUpperCase()) {
       const data = new Uint8Array(res.value);
-      console.log('收到数据:', this._arrayBufferToHex(res.value));
+      this.logger.log('收到数据:', this._arrayBufferToHex(res.value));
       
       this._parseResponse(data);
     }
@@ -521,7 +533,7 @@ async _initSecurity() {
       if (frameCtrl & FRAME_CTRL_CHECKSUM) {
         const checksumPos = 4 + dataLen;
         if (data.length < checksumPos + 2) {
-          console.error('数据长度不足以包含校验和');
+          this.logger.warn('数据长度不足以包含校验和');
           return;
         }
         
@@ -529,7 +541,7 @@ async _initSecurity() {
         const calculatedChecksum = this._calculateChecksum(data.subarray(2, checksumPos));
         
         if (receivedChecksum !== calculatedChecksum) {
-          console.error('校验和不匹配:', receivedChecksum, calculatedChecksum);
+          this.logger.warn('校验和不匹配:', receivedChecksum, calculatedChecksum);
           return;
         }
       }
@@ -537,7 +549,7 @@ async _initSecurity() {
       // 处理不同类型的帧
       this._processFrame(frameType, frameSubType, payload);
     } catch (error) {
-      console.error('解析响应数据失败:', error);
+      this.logger.warn('解析响应数据失败:', error);
     }
   }
 
@@ -579,7 +591,7 @@ async _initSecurity() {
         
         // 复制第一个分片的数据
         this.fragmentCache[cacheKey].data.set(fragmentData, 0);
-        console.log(`接收第一个分片数据: ${fragmentData.length}/${totalLen}`);
+        this.logger.log(`接收第一个分片数据: ${fragmentData.length}/${totalLen}`);
       } 
       // 处理中间分片或最后一个分片
       else if (this.fragmentCache[cacheKey]) {
@@ -599,11 +611,11 @@ async _initSecurity() {
         cache.data.set(fragmentData, cache.receivedLen);
         cache.receivedLen += fragmentData.length;
         
-        console.log(`接收分片数据: ${cache.receivedLen}/${cache.totalLen}`);
+        this.logger.log(`接收分片数据: ${cache.receivedLen}/${cache.totalLen}`);
         
         // 检查是否接收完所有分片
         if (cache.receivedLen >= cache.totalLen || !(frameCtrl & FRAME_CTRL_FRAG)) {
-          console.log(`所有分片数据接收完毕，总长度: ${cache.totalLen}`);
+          this.logger.log(`所有分片数据接收完毕，总长度: ${cache.totalLen}`);
           
           // 处理完整的数据
           const completeData = cache.data.slice(0, cache.totalLen);
@@ -618,7 +630,7 @@ async _initSecurity() {
         this._processFrame(frameType, frameSubType, payload);
       }
     } catch (error) {
-      console.error('处理分片数据失败:', error);
+      this.logger.warn('处理分片数据失败:', error);
     }
   }
 
@@ -630,34 +642,37 @@ async _initSecurity() {
     if (frameType === FRAME_TYPE.CTRL) {
       switch (frameSubType) {
         case CTRL_SUBTYPE.ACK:
-          console.log('收到ACK');
+          this.logger.log('收到ACK');
           break;
         default:
-          console.log('未处理的控制帧子类型:', frameSubType);
+          this.logger.log('未处理的控制帧子类型:', frameSubType);
       }
     } else if (frameType === FRAME_TYPE.DATA) {
       switch (frameSubType) {
         case DATA_SUBTYPE.WIFI_SSID:
-          const ssid = this._uint8ArrayToString(payload);
-          console.log('WiFi SSID:', ssid);
+          const ssid = this.constructor.uint8ArrayToString(payload);
+          this.logger.log('WiFi SSID:', ssid);
           break;
         case DATA_SUBTYPE.CUSTOM_DATA:
-          console.log('自定义数据:', payload);
+          this.logger.log('自定义数据:', payload);
+          if (this.callbacks.onCustomData) {
+            this.callbacks.onCustomData(payload);
+          }
           break;
         case DATA_SUBTYPE.NEG_DATA:
-          console.log('协商数据:', payload);
+          this.logger.log('协商数据:', payload);
           break;
         case DATA_SUBTYPE.WIFI_LIST:
-          console.log('WiFi列表:', payload, this.callbacks);
+          this.logger.log('WiFi列表:', payload, this.callbacks);
           if (this.callbacks.onWifiListReceived) {
             // 解析WiFi列表数据
             const wifiInfo = this._parseWifiListData(payload); 
             this.callbacks.onWifiListReceived(wifiInfo);
-            console.log('wifiInfo', wifiInfo);
+            this.logger.log('wifiInfo', wifiInfo);
           }
           break;
         case DATA_SUBTYPE.WIFI_CONNECTION_STATE:
-          console.log('WiFi连接状态:', payload);
+          this.logger.log('WiFi连接状态:', payload);
           if (this.callbacks.wifiStatus) {
             // 解析WiFi状态数据
             const statusInfo = this._parseWifiStatusData(payload);
@@ -665,7 +680,7 @@ async _initSecurity() {
           }
           break;
         default:
-          console.log('未处理的数据帧子类型:', frameSubType);
+          this.logger.log('未处理的数据帧子类型:', frameSubType);
       }
     }
   }
@@ -690,7 +705,7 @@ async _initSecurity() {
         const ssidBytes = data.slice(offset, offset + ssidLen - 1);
         
         // 使用已有的字符串转换方法
-        const ssid = this._uint8ArrayToString(ssidBytes);
+        const ssid = this.constructor.uint8ArrayToString(ssidBytes);
         
         offset += ssidLen - 1;
         if(ssidMap[ssid]) continue; // 跳过已解析的SSID
@@ -703,7 +718,7 @@ async _initSecurity() {
       
       return result;
     } catch (error) {
-      console.error('解析WiFi列表数据失败:', error);
+      this.logger.warn('解析WiFi列表数据失败:', error);
       return [];
     }
   }
@@ -722,7 +737,7 @@ async _initSecurity() {
       
       let ssid = '';
       if (data.length > 3) {
-        ssid = this._uint8ArrayToString(data.slice(3));
+        ssid = this.constructor.uint8ArrayToString(data.slice(3));
       }
       
       return {
@@ -732,7 +747,7 @@ async _initSecurity() {
         ssid
       };
     } catch (error) {
-      console.error('解析WiFi状态数据失败:', error);
+      this.logger.warn('解析WiFi状态数据失败:', error);
       return null;
     }
   }
@@ -761,7 +776,7 @@ async _initSecurity() {
       
       return encrypted;
     } catch (error) {
-      console.error('加密数据失败:', error);
+      this.logger.warn('加密数据失败:', error);
       return data;
     }
   }
@@ -792,7 +807,7 @@ async _initSecurity() {
       return this._writeData(frame);
     } else {
       // 数据需要分片发送
-      console.log(`数据长度超过${MAX_DATA_SIZE}字节，需要分片发送`);
+      this.logger.log(`数据长度超过${MAX_DATA_SIZE}字节，需要分片发送`);
       
       // 计算分片数量
       const totalDataLength = data.length;
@@ -809,7 +824,7 @@ async _initSecurity() {
         numFragments++;
       }
       
-      console.log(`总数据长度: ${totalDataLength}字节，需要${numFragments}个分片`);
+      this.logger.log(`总数据长度: ${totalDataLength}字节，需要${numFragments}个分片`);
       
       // 发送所有分片
       let offset = 0;
@@ -887,7 +902,7 @@ async _initSecurity() {
       return this._writeData(frame);
     } else {
       // 数据需要分片发送
-      console.log(`数据长度超过${MAX_DATA_SIZE}字节，需要分片发送`);
+      this.logger.log(`数据长度超过${MAX_DATA_SIZE}字节，需要分片发送`);
       
       // 计算分片数量
       const totalDataLength = data.length;
@@ -904,7 +919,7 @@ async _initSecurity() {
         numFragments++;
       }
       
-      console.log(`总数据长度: ${totalDataLength}字节，需要${numFragments}个分片`);
+      this.logger.log(`总数据长度: ${totalDataLength}字节，需要${numFragments}个分片`);
       
       // 发送所有分片
       let offset = 0;
@@ -1018,15 +1033,15 @@ async _initSecurity() {
     
     // 计算校验和
     if (needChecksum) {
-      console.log("frame", frame)
+      this.logger.log("frame", frame)
       const checksum = this._calculateChecksum(frame.subarray(2, 4 + processedData.length));
       frame[4 + processedData.length] = checksum & 0xFF;
       frame[4 + processedData.length + 1] = (checksum >> 8) & 0xFF;
-      console.log("after frame", checksum, frame)
+      this.logger.log("after frame", checksum, frame)
     }
     
     // 打印组装好的帧（十六进制格式）
-    console.log('组装帧:', Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' '));
+    this.logger.log('组装帧:', Array.from(frame).map(b => b.toString(16).padStart(2, '0')).join(' '));
     return frame;
   }
   
@@ -1076,7 +1091,7 @@ async _initSecurity() {
    * @private
    */
   _calculateChecksum(data, length, iv8) {
-    console.log("calculateChecksum", data, length, iv8);
+    this.logger.log("calculateChecksum", data, length, iv8);
     // 处理参数缺失情况
     if (length === undefined) {
       length = data.length;
@@ -1133,10 +1148,10 @@ async _initSecurity() {
         value: data.buffer
       });
       
-      console.log('数据写入成功:', this._arrayBufferToHex(data.buffer));
+      this.logger.log('数据写入成功:', this._arrayBufferToHex(data.buffer));
       return true;
     } catch (error) {
-      console.error('数据写入失败:', error);
+      this.logger.warn('数据写入失败:', error);
       throw error;
     }
   }
@@ -1205,16 +1220,7 @@ async _initSecurity() {
     return new Uint8Array(utf8);
   }
 
-  /**
-   * 微信小程序环境下使用wx.arrayBufferToString
-   * @private
-   */
-  _uint8ArrayToString(array) {
-    // 微信小程序环境下使用wx.arrayBufferToString
-    if (typeof wx !== 'undefined' && wx.arrayBufferToString) {
-      return wx.arrayBufferToString(array.buffer);
-    }
-    
+  static uint8ArrayToString(array) {
     // 手动实现UTF-8解码
     let out = '';
     let i = 0;
