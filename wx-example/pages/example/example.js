@@ -1,5 +1,8 @@
 // 在页面中引入BluFi模块
 const {BluFi, WIFI_MODE } = require("./blufi.js");
+function getTime(d){
+  return `${d.getHours().toString().padStart(2, 0)}:${d.getMinutes().toString().padStart(2, 0)}:${d.getSeconds().toString().padStart(2, 0)}`
+}
 Page({
   data: {
     devices: [],
@@ -12,6 +15,9 @@ Page({
     enableChecksum: false, // 是否启用CRC16校验
     blufiInitialized: false, // BluFi是否已初始化
     receivedCustomData: [],
+    scanWifiTimeout: 3000, // 扫描WiFi的超时时间
+    log: [],
+    isShowLog: false,
   },
 
   // 添加以下方法
@@ -43,6 +49,8 @@ Page({
   },
   // 切换校验状态
   toggleChecksum() {
+    // 保存到本地存储
+    wx.setStorageSync('blufi_enableChecksum', !this.data.enableChecksum);
     this.setData({
       enableChecksum: !this.data.enableChecksum
     });
@@ -51,16 +59,45 @@ Page({
     this.setData({
       prefix: e.detail.value
     });
+    // 保存到本地存储
+    wx.setStorageSync('blufi_prefix', e.detail.value);
+  },
+  changeTimeout(e){    
+    this.setData({
+      scanWifiTimeout: parseInt(e.detail.value)
+    });
+    // 保存到本地存储
+    wx.setStorageSync('blufi_scanWifiTimeout', parseInt(e.detail.value));
   },
   // 初始化BluFi
   async initBluFi() {
     // 创建BluFi实例，传入校验选项
     this.blufi = new BluFi({ 
       devicePrefix: this.data.prefix,
+      scanWifiTimeout: parseInt(this.data.scanWifiTimeout),
       enableChecksum: this.data.enableChecksum,
+      onLog:{
+        log: (...p)=>{
+          console.log(...p); wx.getLogManager().log(...p); 
+          this.data.log.unshift({
+            time: getTime(new Date()),
+            type: 'log', 
+            data: JSON.stringify(p),
+          }); 
+          this.setData({log: this.data.log});
+        },
+        warn: (...p)=>{
+          console.warn(...p); wx.getLogManager().warn(...p);
+          this.data.log.unshift({
+            time: getTime(new Date()),
+            type: 'warn', 
+            data: JSON.stringify(p),
+          }); 
+          this.setData({log: this.data.log});
+        },
+      },
       onCustomData: (data)=>{
-        console.log('收到自定义数据:', data);
-        // 在这里处理自定义数据
+        console.log('收到自定义数据:', data); 
         // 例如：将Uint8Array转换为字符串
         const dataStr = BluFi.uint8ArrayToString(data);
         this.data.receivedCustomData.push({
@@ -93,8 +130,34 @@ Page({
   },
 
   async onLoad() {
-    // 页面加载时不再自动初始化BluFi
-    // 只显示校验选项，等待用户手动初始化
+    // 从本地存储读取设置
+    try {
+      const prefix = wx.getStorageSync('blufi_prefix');
+      const scanWifiTimeout = wx.getStorageSync('blufi_scanWifiTimeout');
+      const enableChecksum = wx.getStorageSync('blufi_enableChecksum');
+      
+      // 更新设置（只更新有保存值的设置）
+      const newSettings = {};
+      
+      if (prefix) {
+        newSettings.prefix = prefix;
+      }
+      
+      if (scanWifiTimeout) {
+        newSettings.scanWifiTimeout = scanWifiTimeout;
+      }
+      
+      if (enableChecksum !== undefined && enableChecksum !== null) {
+        newSettings.enableChecksum = enableChecksum;
+      }
+      
+      // 更新数据
+      if (Object.keys(newSettings).length > 0) {
+        this.setData(newSettings);
+      }
+    } catch (error) {
+      console.error('读取设置失败:', error);
+    }
   },
 
   async scanDevices() {
@@ -180,11 +243,11 @@ Page({
         mode: WIFI_MODE.STATION,
       });
       wx.hideLoading();
-      wx.showToast({ title: "WiFi配置成功" });
+      wx.showToast({ title: "WiFi配置发送成功" });
     } catch (error) {
       wx.hideLoading();
       wx.showToast({
-        title: "WiFi配置失败: " + error.message,
+        title: "WiFi配置发送失败: " + error.message,
         icon: "none",
       });
     }
@@ -219,7 +282,11 @@ Page({
       });
     }
   },
-
+  showLog(){
+    this.setData({
+      isShowLog: !this.data.isShowLog
+    })
+  },
   onUnload() {
     // 页面卸载时断开连接
     if (this.blufi) {

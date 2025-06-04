@@ -11,11 +11,15 @@
       <view class="section-title">BluFi设置</view>
       <view class="form-item">
         <label class="label">
-          <checkbox bindtap="toggleChecksum" checked="{{enableChecksum}}"> 启用CRC16校验</checkbox>
-        </label>
-        <label class="label">
           <view style="color: #999;">设备名称前缀</view> 
           <input type="text" value="{{prefix}}" bindinput="changePrefix" placeholder="请输入BLE设备名前缀"/>
+        </label>
+        <label class="label">
+          <view style="color: #999;">扫描WiFi超时(毫秒)</view> 
+          <input type="text" value="{{scanWifiTimeout}}" bindinput="changeTimeout" placeholder="请输入扫描WiFi超时时长"/>
+        </label>
+        <label class="label">
+          <checkbox bindtap="toggleChecksum" checked="{{enableChecksum}}"> 启用CRC16校验</checkbox>
         </label>
       </view>
       <button class="btn" bindtap="initBluFi" disabled="{{blufiInitialized}}">初始化BluFi</button>
@@ -107,3 +111,12 @@
     <text class="status-text">{{connected ? '已连接' : '未连接'}}</text>
   </view>
 </view>
+
+<view wx:if="{{isShowLog}}" class="log-window">
+  <view class="title">LOG(时间逆序)</view>
+  <view wx:for="{{log}}" wx:key="index" class="{{item.type}}">
+    {{item.time}} [{{item.type}}] {{item.data}}
+  </view>
+  <view style="height: 100px;"></view>
+</view>
+<view class="log-button" bind:tap="showLog">LOG</view>

@@ -92,7 +92,9 @@ class BluFi {
    * @param {String} options.devicePrefix - 设备名称前缀, 默认BLUFI_
    * @param {Boolean} options.enableChecksum - 是否启用CRC16校验, 默认false
    * @param {Boolean} options.enableLogManager - 是否使用wx.logManager作为日志输出, 默认false
+   * @param {Function} options.onLog - 日志输出回调函数, 如定义，则忽略enableLogManager. 需要定义.log()和.warn()函数
    * @param {Function} options.onCustomData - 收到自定义数据时的回调函数, 默认为null
+   * @param {Number} options.scanWifiTimeout - 扫描WiFi的超时时间(ms), 默认3000
    */
   constructor(options = {}) {
     this.deviceId = null;
@@ -107,10 +109,14 @@ class BluFi {
     
     // 设备前缀
     this.devicePrefix = options.devicePrefix || 'BLUFI_';
+
+    // 扫描WiFi超时时间
+    this.scanWifiTimeout = options.scanWifiTimeout || 3000;
     
     // 日志管理器设置
     this.enableLogManager = options.enableLogManager !== undefined ? options.enableLogManager : false;
     this.logger = this.enableLogManager ? wx.getLogManager() : console;
+    this.logger = options.onLog ? options.onLog : this.logger;
     
     // 自定义数据回调
     this.callbacks.onCustomData = options.onCustomData || null;
@@ -190,7 +196,6 @@ class BluFi {
       
       // 获取在蓝牙模块生效期间所有已发现的蓝牙设备
       const res = await this._promisify(wx.getBluetoothDevices);
-      this.logger.log('scanDevices', res);
       
       // 停止搜寻
       await this._promisify(wx.stopBluetoothDevicesDiscovery);
@@ -423,6 +428,7 @@ async _initSecurity() {
         // 发送扫描请求
         this._sendCtrlFrame(CTRL_SUBTYPE.GET_WIFI_LIST, new Uint8Array([]))
           .catch(err => {
+            this.logger.warn('扫描WiFi失败, 删除回调:', err);
             delete this.callbacks.onWifiListReceived;
             reject(err);
           });
@@ -430,9 +436,10 @@ async _initSecurity() {
         // 设置超时，在超时后返回已收集的WiFi列表
         setTimeout(() => {
           const result = wifiList.slice(); // 复制当前列表
+          this.logger.log('扫描WiFi超时, 返回已收集的WiFi列表:', result);
           delete this.callbacks.onWifiListReceived;
           resolve(result);
-        }, 3000); // 3秒超时
+        }, this.scanWifiTimeout); 
       });
     } catch (error) {
       this.logger.warn('扫描WiFi失败:', error);

@@ -156,3 +156,43 @@
 .wifi-item:hover {
   background-color: #f5f5f5;
 }
+.log{
+  color: #555;
+}
+.warn{
+  color: #e7bd00;
+}
+.log, .warn {
+  white-space: normal; /* 确保空白处换行 */
+  margin-bottom: 5rpx; /* 添加一点底部间距增强可读性 */
+  line-height: 1.4; /* 增加行高改善可读性 */
+}
+.log-window{
+  position:fixed; 
+  left:0; 
+  top:0; 
+  width: 96%; 
+  height: 100%; 
+  padding: 2%;
+  z-index: 99; 
+  font-size: small;
+  background-color: #ffffffdd;
+  overflow-y: auto; /* 添加垂直滚动 */
+  word-wrap: break-word; /* 确保长文字换行 */
+  word-break: break-all; /* 在任意字符间断行 */
+}
+.log-button{
+  position:fixed; 
+  right: 20px; 
+  bottom: 20px; 
+  width: 30px;
+  height: 30px;
+  text-align: center;
+  line-height: 30px;
+  border: 1px solid #1aad19;
+  border-radius: 20px;
+  z-index: 100; 
+  color: #1aad19; 
+  background-color: #fff;
+  font-size: xx-small;
+}
