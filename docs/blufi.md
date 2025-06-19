@@ -92,7 +92,7 @@ ACK 帧格式 (8 bit)：
 | 0xc (b’001100) | 服务端认证 | 在进行企业级加密时提供服务端认证。是否包含私钥，取决于认证的内容。 | 请参考备注 2。 |
 | 0xd (b’001101) | 客户端私钥 | 在进行企业级加密时提供客户端私钥。 | 请参考备注 2。 |
 | 0xe (b’001110) | 服务端私钥 | 在进行企业级加密时提供服务端私钥。 | 请参考备注 2。 |
-| 0xf (b’001111) | Wi-Fi 连接状态报告 | 通知手机 ESP 设备的 Wi-Fi 状态，包括 STA 状态和 SoftAP 状态。用于 STA 设备连接手机或 SoftAP。但是，当手机接收到 Wi-Fi 状态时，除了本帧之外，还可以回复其他帧。 | data[0] 表示 opmode，包括：0x00: NULL0x01: STA0x02: SoftAP0x03: SoftAP & STAdata[1]：STA 设备的连接状态。0x0 表示处于连接状态且获得 IP 地址，0x1 表示处于非连接状态, 0x2 表示处于正在连接状态，0x3 表示处于连接状态但未获得 IP 地址。data[2]：SoftAP 的连接状态，即表示有多少 STA 设备已经连接。data[3]及后面的数据是按照 SSID/BSSID 格式提供的信息。 如果 Wi-Fi 处于正在连接状态，这里将会包含最大重连次数；如果 Wi-Fi 处于非连接状态，这里将会包含 Wi-Fi 断开连接原因和 RSSI 信息。 |
+| 0xf (b’001111) | Wi-Fi 连接状态报告 | 通知手机 ESP 设备的 Wi-Fi 状态，包括 STA 状态和 SoftAP 状态。用于 STA 设备连接手机或 SoftAP。但是，当手机接收到 Wi-Fi 状态时，除了本帧之外，还可以回复其他帧。 | data[0] 表示 opmode，包括：0x00: NULL 0x01: STA 0x02: SoftAP 0x03: SoftAP & STA; data[1]：STA 设备的连接状态。0x0 表示处于连接状态且获得 IP 地址，0x1 表示处于非连接状态, 0x2 表示处于正在连接状态，0x3 表示处于连接状态但未获得 IP 地址。data[2]：SoftAP 的连接状态，即表示有多少 STA 设备已经连接。data[3]及后面的数据是按照 SSID/BSSID 格式提供的信息。 如果 Wi-Fi 处于正在连接状态，这里将会包含最大重连次数；如果 Wi-Fi 处于非连接状态，这里将会包含 Wi-Fi 断开连接原因和 RSSI 信息。 |
 | 0x10 (b’010000) | 版本 |  | data[0]= 主版本data[1]= 子版本 |
 | 0x11 (b’010001) | Wi-Fi 热点列表 | 将 Wi-Fi 热点列表发送给 ESP 设备 | 数据帧的格式为 Length + RSSI + SSID。数据较长时可分片发送。 |
 | 0x12 (b’010010) | 报告异常 | 通知手机 BluFi 过程出现异常 | 0x00: sequence error0x01: checksum error0x02: decrypt error0x03: encrypt error0x04: init security error0x05: dh malloc error0x06: dh param error0x07: read param error0x08: make public error0x09: data format error0x0a: calculate MD5 error0x0b: Wi-Fi scan error |

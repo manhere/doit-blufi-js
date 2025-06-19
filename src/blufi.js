@@ -78,6 +78,13 @@ const SEC_MODE = {
   WPA2_WPA3_PSK: 0x07
 };
 
+const STATION_CONNECT_STATUS = {
+  CONNECTED_AND_GOT_IP: 0x00,
+  DISCONNECTED: 0x01,
+  CONNECTING: 0x02,
+  CONNETED: 0x03,
+}
+
 // 安全帧控制位
 const FRAME_CTRL_ENCRYPTED = 0x01;    // 加密位
 const FRAME_CTRL_CHECKSUM = 0x02;     // 校验和位
@@ -92,9 +99,7 @@ class BluFi {
    * @param {String} options.devicePrefix - 设备名称前缀, 默认BLUFI_
    * @param {Boolean} options.enableChecksum - 是否启用CRC16校验, 默认false
    * @param {Boolean} options.enableLogManager - 是否使用wx.logManager作为日志输出, 默认false
-   * @param {Function} options.onLog - 日志输出回调函数, 如定义，则忽略enableLogManager. 需要定义.log()和.warn()函数
    * @param {Function} options.onCustomData - 收到自定义数据时的回调函数, 默认为null
-   * @param {Number} options.scanWifiTimeout - 扫描WiFi的超时时间(ms), 默认3000
    */
   constructor(options = {}) {
     this.deviceId = null;
@@ -109,18 +114,14 @@ class BluFi {
     
     // 设备前缀
     this.devicePrefix = options.devicePrefix || 'BLUFI_';
-
-    // 扫描WiFi超时时间
-    this.scanWifiTimeout = options.scanWifiTimeout || 3000;
     
     // 日志管理器设置
     this.enableLogManager = options.enableLogManager !== undefined ? options.enableLogManager : false;
     this.logger = this.enableLogManager ? wx.getLogManager() : console;
-    this.logger = options.onLog ? options.onLog : this.logger;
     
     // 自定义数据回调
     this.callbacks.onCustomData = options.onCustomData || null;
-    
+    this.callbacks.onWifiStatusChange = options.onWifiStatusChange || null;
     // 安全相关
     this.securityMode = 0; // 默认无加密无校验
     this.dh = null;
@@ -175,6 +176,7 @@ class BluFi {
           res.devices.forEach(device => {
             // 检查是否为目标设备
             if (device.name && device.name.includes(this.devicePrefix)) {
+              this.logger.log('found dev', device.deviceId)
               // 检查是否已经发现过该设备
               if (!deviceMap.has(device.deviceId)) {
                 deviceMap.set(device.deviceId, device);
@@ -196,6 +198,7 @@ class BluFi {
       
       // 获取在蓝牙模块生效期间所有已发现的蓝牙设备
       const res = await this._promisify(wx.getBluetoothDevices);
+      this.logger.log('scanDevices', res);
       
       // 停止搜寻
       await this._promisify(wx.stopBluetoothDevicesDiscovery);
@@ -382,22 +385,22 @@ async _initSecurity() {
     try {
       return new Promise((resolve, reject) => {
         // 设置回调
-        this.callbacks.wifiStatus = (data) => {
+        this.callbacks._wifiStatus = (data) => {
           resolve(data);
-          delete this.callbacks.wifiStatus;
+          delete this.callbacks._wifiStatus;
         };
         
         // 发送获取WiFi状态请求
         this._sendCtrlFrame(CTRL_SUBTYPE.GET_WIFI_STATUS, new Uint8Array([]))
           .catch(err => {
-            delete this.callbacks.wifiStatus;
+            delete this.callbacks._wifiStatus;
             reject(err);
           });
         
         // 设置超时
         setTimeout(() => {
-          if (this.callbacks.wifiStatus) {
-            delete this.callbacks.wifiStatus;
+          if (this.callbacks._wifiStatus) {
+            delete this.callbacks._wifiStatus;
             reject(new Error('获取WiFi状态超时'));
           }
         }, 10000);
@@ -411,7 +414,7 @@ async _initSecurity() {
   /**
    * 扫描WiFi网络
    */
-  async scanWifi() {
+  async scanWifi(timeout=6000) {
     if (!this.connected) {
       throw new Error('设备未连接');
     }
@@ -423,12 +426,13 @@ async _initSecurity() {
         // 设置回调
         this.callbacks.onWifiListReceived = (data) => {
           wifiList.push(...data);
+          const result = wifiList.slice(); // 复制当前列表
+          resolve(result);
         };
         
         // 发送扫描请求
         this._sendCtrlFrame(CTRL_SUBTYPE.GET_WIFI_LIST, new Uint8Array([]))
           .catch(err => {
-            this.logger.warn('扫描WiFi失败, 删除回调:', err);
             delete this.callbacks.onWifiListReceived;
             reject(err);
           });
@@ -436,10 +440,9 @@ async _initSecurity() {
         // 设置超时，在超时后返回已收集的WiFi列表
         setTimeout(() => {
           const result = wifiList.slice(); // 复制当前列表
-          this.logger.log('扫描WiFi超时, 返回已收集的WiFi列表:', result);
           delete this.callbacks.onWifiListReceived;
           resolve(result);
-        }, this.scanWifiTimeout); 
+        }, timeout); 
       });
     } catch (error) {
       this.logger.warn('扫描WiFi失败:', error);
@@ -680,10 +683,10 @@ async _initSecurity() {
           break;
         case DATA_SUBTYPE.WIFI_CONNECTION_STATE:
           this.logger.log('WiFi连接状态:', payload);
-          if (this.callbacks.wifiStatus) {
+          if (this.callbacks.onWifiStatusChange) {
             // 解析WiFi状态数据
             const statusInfo = this._parseWifiStatusData(payload);
-            this.callbacks.wifiStatus(statusInfo);
+            this.callbacks.onWifiStatusChange(statusInfo);
           }
           break;
         default:
@@ -1305,5 +1308,6 @@ module.exports = {
   FRAME_TYPE,
   CTRL_SUBTYPE,
   DATA_SUBTYPE,
-  SEC_MODE
+  SEC_MODE,
+  STATION_CONNECT_STATUS
 };
