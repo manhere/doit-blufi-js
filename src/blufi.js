@@ -451,6 +451,14 @@ async _initSecurity() {
   }
 
   /**
+   * 发送自定义字符串
+   * @param {string} str 自定义字符串
+   */
+  async sendCustomStr(str){
+    await this.sendCustomData(this._stringToUint8Array(str))
+  }
+
+  /**
    * 发送自定义数据
    * @param {Uint8Array} data - 自定义数据
    */
