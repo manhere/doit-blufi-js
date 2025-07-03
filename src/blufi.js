@@ -816,7 +816,7 @@ async _initSecurity() {
     // 检查数据长度是否需要分片
     const MAX_FRAME_SIZE = 18; // BLE限制每次发送不超过18字节
     const HEADER_SIZE = 4; // 类型(1) + 帧控制(1) + 序列号(1) + 数据长度(1)
-    const CHECKSUM_SIZE = 2; // 校验和(2)
+    const CHECKSUM_SIZE = this.enableChecksum? 2: 0; // 校验和(2)
     const MAX_DATA_SIZE = MAX_FRAME_SIZE - HEADER_SIZE - CHECKSUM_SIZE; // 最大数据长度
     
     if (!data || data.length <= MAX_DATA_SIZE) {
@@ -911,7 +911,7 @@ async _initSecurity() {
     // 检查数据长度是否需要分片
     const MAX_FRAME_SIZE = 18; // BLE限制每次发送不超过18字节
     const HEADER_SIZE = 4; // 类型(1) + 帧控制(1) + 序列号(1) + 数据长度(1)
-    const CHECKSUM_SIZE = 2; // 校验和(2)
+    const CHECKSUM_SIZE = this.enableChecksum? 2: 0; // 校验和(2)
     const MAX_DATA_SIZE = MAX_FRAME_SIZE - HEADER_SIZE - CHECKSUM_SIZE; // 最大数据长度
     
     if (!data || data.length <= MAX_DATA_SIZE) {
@@ -1080,7 +1080,8 @@ async _initSecurity() {
     
     // 准备数据
     const dataLength = data ? data.length : 0;
-    const frameLength = 4 + dataLength + 2; // 类型(1) + 帧控制(1) + 序列号(1) + 数据长度(1) + 数据(n) + 校验和(2)
+    const checksumLength = this.enableChecksum? 2: 0;
+    const frameLength = 4 + dataLength + checksumLength; // 类型(1) + 帧控制(1) + 序列号(1) + 数据长度(1) + 数据(n) + 校验和(2)
     
     const frame = new Uint8Array(frameLength);
     frame[0] = type;
@@ -1093,9 +1094,11 @@ async _initSecurity() {
     }
     
     // 计算校验和
-    const checksum = this._calculateChecksum(frame.subarray(2, 4 + dataLength));
-    frame[4 + dataLength] = checksum & 0xFF;
-    frame[4 + dataLength + 1] = (checksum >> 8) & 0xFF;
+    if(this.enableChecksum){
+      const checksum = this._calculateChecksum(frame.subarray(2, 4 + dataLength));
+      frame[4 + dataLength] = checksum & 0xFF;
+      frame[4 + dataLength + 1] = (checksum >> 8) & 0xFF;
+    }
     
     return frame;
   }
