@@ -81,8 +81,16 @@ const STATION_CONNECT_STATUS = {
   CONNECTED_AND_GOT_IP: 0x00,
   DISCONNECTED: 0x01,
   CONNECTING: 0x02,
-  CONNETED: 0x03,
-}
+  CONNETED: 0x03
+};
+
+//WiFi连接失败原因
+const WIFI_FAIL_REASON = {
+    FOUR_WAY_HANDSHAKE_TIMEOUT: 15,
+    NO_AP_FOUND: 201,
+    HANDSHAKE_TIMEOUT: 204,
+    CONNECTION_FAIL: 205
+};
 
 // 安全帧控制位
 const FRAME_CTRL_ENCRYPTED = 0x01;    // 加密位
@@ -821,6 +829,7 @@ async _initSecurity() {
                   const endReason = stateBytes[0];
                   this.logger.log('WiFi endReason:', endReason);
                   state.endReason = endReason;
+                  state.endReasonValue = this._parseWifiFailReason(endReason);
                   break;
             case DATA_SUBTYPE.WIFI_ERROR_RSSI:
                   const rssi = stateBytes[0];
@@ -835,6 +844,25 @@ async _initSecurity() {
       }
         
       return state;
+  }
+
+   /**
+   * 解析WiFi失败原因
+   * @private
+   */
+  _parseWifiFailReason(reasonCode) {
+      let reason = "";
+      if (reasonCode == WIFI_FAIL_REASON.NO_AP_FOUND) {
+          reason = "NO AP FOUND";
+      } else if (reasonCode == WIFI_FAIL_REASON.CONNECTION_FAIL) {
+          reason = "AP IN BLACKLIST, PLEASE RETRY";
+      } else if (reasonCode == WIFI_FAIL_REASON.FOUR_WAY_HANDSHAKE_TIMEOUT || reasonCode == WIFI_FAIL_REASON.HANDSHAKE_TIMEOUT) {
+          reason = "WRONG PASSWORD";
+      } else {
+          reason = "UNKN REASON";
+      }
+
+      return reason;
   }
 
   /**
