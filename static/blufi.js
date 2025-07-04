@@ -885,7 +885,7 @@ async _initSecurity() {
             case DATA_SUBTYPE.WIFI_ERROR_RSSI:
                   const rssi = stateBytes[0];
                   this.logger.log('WiFi rssi:', rssi);
-                  state.rssi = rssi;
+                  state.rssi = rssi - 256;
                   break;
             default:
                   this.logger.log('未处理的状态子类型:', infoType);
